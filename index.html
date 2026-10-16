@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Stopwatch &amp; Timer</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fbf3e4;
+        --bg-soft: #f6ead2;
+        --surface: #fffdf7;
+        --ink: #3b2a1a;
+        --ink-soft: #7a6448;
+        --line: #e3d2b3;
+        --accent: #c4501b;
+        --accent-ink: #ffffff;
+        --accent-soft: #fbe3d3;
+        --good: #2f7d4f;
+        --danger: #b3372a;
+        --tab-bg: #f1e3c6;
+        --shadow: 0 2px 10px rgba(107, 72, 32, 0.12);
+        --flash-bg: #ffd9a8;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #221a12;
+          --bg-soft: #2b2115;
+          --surface: #2e2417;
+          --ink: #f4e7cf;
+          --ink-soft: #c3a87f;
+          --line: #4d3b24;
+          --accent: #e8763f;
+          --accent-ink: #241408;
+          --accent-soft: #4a2c17;
+          --good: #6cc48c;
+          --danger: #f0867a;
+          --tab-bg: #38291a;
+          --shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+          --flash-bg: #6b4423;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: ui-rounded, "Segoe UI", system-ui, -apple-system, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .wrap {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 20px 16px 28px;
+      }
+      .intro {
+        text-align: center;
+        font-size: 1.05rem;
+        line-height: 1.45;
+        color: var(--ink-soft);
+        margin: 4px 0 18px;
+      }
+      .intro strong { color: var(--ink); }
+
+      /* Mode tabs */
+      .tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        background: var(--tab-bg);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 6px;
+        margin-bottom: 22px;
+      }
+      .tab {
+        appearance: none;
+        border: 0;
+        border-radius: 11px;
+        background: transparent;
+        color: var(--ink-soft);
+        font: inherit;
+        font-size: 1.15rem;
+        font-weight: 700;
+        min-height: 56px;
+        padding: 12px 8px;
+        cursor: pointer;
+      }
+      .tab[aria-selected="true"] {
+        background: var(--surface);
+        color: var(--ink);
+        box-shadow: var(--shadow);
+      }
+
+      .display-box {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        padding: 26px 10px 22px;
+        text-align: center;
+        margin-bottom: 18px;
+      }
+      .bigtime {
+        font-variant-numeric: tabular-nums;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+        line-height: 1;
+        font-size: clamp(3.2rem, 15.5vw, 5.6rem);
+        white-space: nowrap;
+      }
+      .bigtime .tenths { font-size: 0.55em; color: var(--ink-soft); font-weight: 700; }
+      .status-line {
+        margin-top: 10px;
+        min-height: 1.3em;
+        font-size: 1rem;
+        color: var(--ink-soft);
+      }
+
+      /* Buttons */
+      .btn-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .btn-row.three { grid-template-columns: 1fr 1.3fr 1fr; }
+      .btn {
+        appearance: none;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        color: var(--ink);
+        font: inherit;
+        font-size: 1.15rem;
+        font-weight: 700;
+        min-height: 60px;
+        padding: 14px 8px;
+        cursor: pointer;
+        box-shadow: var(--shadow);
+      }
+      .btn:active { transform: scale(0.98); }
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-ink);
+      }
+      .btn.primary.running {
+        background: var(--surface);
+        color: var(--danger);
+        border-color: var(--danger);
+      }
+      .btn:disabled { opacity: 0.4; cursor: default; }
+      .btn:disabled:active { transform: none; }
+
+      /* Laps */
+      .laps-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin: 22px 2px 8px;
+      }
+      .laps-head h2 { font-size: 1.05rem; margin: 0; }
+      .laps-head span { color: var(--ink-soft); font-size: 0.9rem; }
+      .lap-list { list-style: none; margin: 0; padding: 0; }
+      .lap-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      .lap-num { font-weight: 700; }
+      .lap-split { color: var(--ink-soft); font-size: 0.95rem; }
+      .lap-total { font-weight: 700; font-size: 1.05rem; }
+      .laps-empty {
+        color: var(--ink-soft);
+        text-align: center;
+        padding: 14px 0 4px;
+        font-size: 0.98rem;
+      }
+
+      /* Timer setup */
+      .setters {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+      .setter {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 10px 6px 12px;
+        text-align: center;
+        box-shadow: var(--shadow);
+        min-width: 0;
+      }
+      .setter label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--ink-soft);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+      .stepper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+      }
+      .step-btn {
+        appearance: none;
+        border: 0;
+        background: var(--accent-soft);
+        color: var(--ink);
+        font: inherit;
+        font-size: 1.5rem;
+        font-weight: 800;
+        flex: 1 1 0;
+        min-width: 32px;
+        height: 48px;
+        border-radius: 10px;
+        cursor: pointer;
+        line-height: 1;
+      }
+      .step-btn:active { transform: scale(0.95); }
+      .setter input {
+        width: 3ch;
+        min-width: 44px;
+        border: 0;
+        background: transparent;
+        color: var(--ink);
+        font: inherit;
+        font-size: 1.7rem;
+        font-weight: 800;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+        padding: 4px 0;
+        outline: none;
+      }
+      .setter input:focus { color: var(--accent); }
+      .presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin-bottom: 18px;
+      }
+      .preset {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: var(--bg-soft);
+        color: var(--ink);
+        font: inherit;
+        font-size: 0.98rem;
+        font-weight: 600;
+        border-radius: 999px;
+        min-height: 44px;
+        padding: 8px 16px;
+        cursor: pointer;
+      }
+      .preset:active { transform: scale(0.97); }
+
+      /* Progress */
+      .progress-track {
+        height: 14px;
+        border-radius: 999px;
+        background: var(--bg-soft);
+        border: 1px solid var(--line);
+        overflow: hidden;
+        margin: 16px 2px 20px;
+      }
+      .progress-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        border-radius: 999px;
+        transition: width 0.2s linear;
+      }
+
+      /* Sound toggle */
+      .sound-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px 16px;
+        margin-top: 14px;
+        box-shadow: var(--shadow);
+      }
+      .sound-row .label { font-weight: 700; font-size: 1.02rem; }
+      .sound-row .hint { color: var(--ink-soft); font-size: 0.88rem; }
+      .switch {
+        appearance: none;
+        border: 0;
+        flex: none;
+        width: 62px;
+        height: 38px;
+        border-radius: 999px;
+        background: var(--tab-bg);
+        border: 1px solid var(--line);
+        position: relative;
+        cursor: pointer;
+      }
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        transition: left 0.15s ease;
+      }
+      .switch[aria-checked="true"] { background: var(--good); border-color: var(--good); }
+      .switch[aria-checked="true"]::after { left: 27px; }
+
+      /* Alarm */
+      .alarm-banner {
+        display: none;
+        background: var(--accent);
+        color: var(--accent-ink);
+        border-radius: 16px;
+        text-align: center;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .alarm-banner.show { display: block; }
+      .alarm-banner .msg { font-size: 1.35rem; font-weight: 800; margin-bottom: 12px; }
+      .alarm-banner .stop-btn {
+        appearance: none;
+        border: 0;
+        background: var(--surface);
+        color: var(--ink);
+        font: inherit;
+        font-size: 1.15rem;
+        font-weight: 800;
+        border-radius: 12px;
+        min-height: 56px;
+        padding: 12px 34px;
+        cursor: pointer;
+      }
+      @keyframes flashbox {
+        0%, 100% { background: var(--surface); }
+        50% { background: var(--flash-bg); }
+      }
+      .display-box.flashing { animation: flashbox 0.9s ease-in-out infinite; }
+      @media (prefers-reduced-motion: reduce) {
+        .display-box.flashing { animation: none; outline: 4px solid var(--accent); }
+        .btn:active, .step-btn:active, .preset:active { transform: none; }
+        .progress-fill { transition: none; }
+      }
+
+      footer {
+        text-align: center;
+        color: var(--ink-soft);
+        font-size: 0.88rem;
+        margin-top: 30px;
+        line-height: 1.5;
+      }
+      @media (max-width: 480px) {
+        .setter { padding: 10px 3px 12px; }
+        .step-btn { min-width: 28px; font-size: 1.3rem; }
+        .setter input { min-width: 36px; font-size: 1.45rem; }
+      }
+      .hidden { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <p class="intro">A big, simple <strong>stopwatch</strong> and <strong>countdown timer</strong> — easy to read from across the room.</p>
+
+      <div class="tabs" role="tablist" aria-label="Choose a mode">
+        <button class="tab" id="tab-sw" role="tab" aria-selected="true" aria-controls="panel-sw">Stopwatch</button>
+        <button class="tab" id="tab-tm" role="tab" aria-selected="false" aria-controls="panel-tm">Timer</button>
+      </div>
+
+      <!-- ============ STOPWATCH ============ -->
+      <section id="panel-sw" role="tabpanel" aria-labelledby="tab-sw">
+        <div class="display-box" id="sw-box">
+          <div class="bigtime" id="sw-display">0:00<span class="tenths">.0</span></div>
+          <div class="status-line" id="sw-status">Ready when you are.</div>
+        </div>
+
+        <div class="btn-row three">
+          <button class="btn" id="sw-reset" disabled>Reset</button>
+          <button class="btn primary" id="sw-toggle">Start</button>
+          <button class="btn" id="sw-lap" disabled>Lap</button>
+        </div>
+
+        <div class="laps-head">
+          <h2>Laps</h2>
+          <span id="laps-count"></span>
+        </div>
+        <p class="laps-empty" id="laps-empty">No laps yet. Tap Lap while the stopwatch runs.</p>
+        <ol class="lap-list" id="lap-list"></ol>
+      </section>
+
+      <!-- ============ TIMER ============ -->
+      <section id="panel-tm" role="tabpanel" aria-labelledby="tab-tm" class="hidden">
+        <div class="alarm-banner" id="alarm-banner" role="alert">
+          <div class="msg">Time&rsquo;s up!</div>
+          <button class="stop-btn" id="alarm-stop">Stop</button>
+        </div>
+
+        <div class="display-box" id="tm-box">
+          <div class="bigtime" id="tm-display">0:00</div>
+          <div class="status-line" id="tm-status">Set a time below, then tap Start.</div>
+        </div>
+
+        <div class="progress-track" aria-hidden="true">
+          <div class="progress-fill" id="tm-progress"></div>
+        </div>
+
+        <div id="tm-setup">
+          <div class="setters">
+            <div class="setter">
+              <label for="in-h">Hours</label>
+              <div class="stepper">
+                <button class="step-btn" data-step="h:-1" aria-label="Hours minus">&minus;</button>
+                <input id="in-h" type="number" inputmode="numeric" min="0" max="99" value="0" />
+                <button class="step-btn" data-step="h:1" aria-label="Hours plus">+</button>
+              </div>
+            </div>
+            <div class="setter">
+              <label for="in-m">Minutes</label>
+              <div class="stepper">
+                <button class="step-btn" data-step="m:-1" aria-label="Minutes minus">&minus;</button>
+                <input id="in-m" type="number" inputmode="numeric" min="0" max="59" value="5" />
+                <button class="step-btn" data-step="m:1" aria-label="Minutes plus">+</button>
+              </div>
+            </div>
+            <div class="setter">
+              <label for="in-s">Seconds</label>
+              <div class="stepper">
+                <button class="step-btn" data-step="s:-1" aria-label="Seconds minus">&minus;</button>
+                <input id="in-s" type="number" inputmode="numeric" min="0" max="59" value="0" />
+                <button class="step-btn" data-step="s:1" aria-label="Seconds plus">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="presets" aria-label="Quick times">
+            <button class="preset" data-preset="60">1 min</button>
+            <button class="preset" data-preset="300">5 min</button>
+            <button class="preset" data-preset="600">10 min</button>
+            <button class="preset" data-preset="900">15 min</button>
+            <button class="preset" data-preset="1800">30 min</button>
+            <button class="preset" data-preset="3600">1 hour</button>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn" id="tm-reset" disabled>Reset</button>
+          <button class="btn primary" id="tm-toggle">Start</button>
+        </div>
+
+        <div class="sound-row">
+          <div>
+            <div class="label">Alarm sound</div>
+            <div class="hint">A gentle beep when time runs out.</div>
+          </div>
+          <button class="switch" id="sound-toggle" role="switch" aria-checked="true" aria-label="Alarm sound"></button>
+        </div>
+      </section>
+
+      <footer>Made by Noki for Tyler. Public domain — share freely.</footer>
+    </main>
+
+    <script>
+      "use strict";
+
+      /* ---------- Tabs ---------- */
+      var tabSw = document.getElementById("tab-sw");
+      var tabTm = document.getElementById("tab-tm");
+      var panelSw = document.getElementById("panel-sw");
+      var panelTm = document.getElementById("panel-tm");
+
+      function showMode(mode) {
+        var sw = mode === "sw";
+        tabSw.setAttribute("aria-selected", sw ? "true" : "false");
+        tabTm.setAttribute("aria-selected", sw ? "false" : "true");
+        panelSw.classList.toggle("hidden", !sw);
+        panelTm.classList.toggle("hidden", sw);
+      }
+      tabSw.addEventListener("click", function () { showMode("sw"); });
+      tabTm.addEventListener("click", function () { showMode("tm"); });
+
+      /* ---------- Formatting ---------- */
+      function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+      // Stopwatch: M:SS with tenths returned separately for styling.
+      function fmtSw(ms) {
+        var totalTenths = Math.floor(ms / 100);
+        var tenths = totalTenths % 10;
+        var totalSecs = Math.floor(totalTenths / 10);
+        var secs = totalSecs % 60;
+        var mins = Math.floor(totalSecs / 60);
+        return { main: mins + ":" + pad2(secs), tenths: "." + tenths };
+      }
+      function fmtSwPlain(ms) {
+        var f = fmtSw(ms);
+        return f.main + f.tenths;
+      }
+      // Timer: H:MM:SS when hours present, else M:SS. Rounds up so it never shows 0 early.
+      function fmtTm(ms) {
+        var totalSecs = Math.max(0, Math.ceil(ms / 1000));
+        var secs = totalSecs % 60;
+        var mins = Math.floor(totalSecs / 60) % 60;
+        var hrs = Math.floor(totalSecs / 3600);
+        if (hrs > 0) return hrs + ":" + pad2(mins) + ":" + pad2(secs);
+        return Math.floor(totalSecs / 60) + ":" + pad2(secs);
+      }
+
+      /* ================================================================
+         STOPWATCH — all elapsed time derives from Date.now() stamps.
+         ================================================================ */
+      var sw = {
+        running: false,
+        startStamp: 0,     // Date.now() when the current run segment began
+        accumulated: 0,    // ms banked from earlier segments
+        lastLapTotal: 0,
+        lapCount: 0,
+        raf: 0
+      };
+      var swDisplay = document.getElementById("sw-display");
+      var swStatus = document.getElementById("sw-status");
+      var swToggle = document.getElementById("sw-toggle");
+      var swReset = document.getElementById("sw-reset");
+      var swLapBtn = document.getElementById("sw-lap");
+      var lapList = document.getElementById("lap-list");
+      var lapsEmpty = document.getElementById("laps-empty");
+      var lapsCount = document.getElementById("laps-count");
+
+      function swElapsed() {
+        return sw.accumulated + (sw.running ? Date.now() - sw.startStamp : 0);
+      }
+      function swRender() {
+        var f = fmtSw(swElapsed());
+        swDisplay.innerHTML = "";
+        swDisplay.appendChild(document.createTextNode(f.main));
+        var span = document.createElement("span");
+        span.className = "tenths";
+        span.textContent = f.tenths;
+        swDisplay.appendChild(span);
+      }
+      function swLoop() {
+        swRender();
+        if (sw.running) sw.raf = requestAnimationFrame(swLoop);
+      }
+      function swSyncButtons() {
+        swToggle.textContent = sw.running ? "Pause" : (swElapsed() > 0 ? "Resume" : "Start");
+        swToggle.classList.toggle("running", sw.running);
+        swReset.disabled = !sw.running && swElapsed() === 0;
+        swLapBtn.disabled = !sw.running;
+      }
+      swToggle.addEventListener("click", function () {
+        if (sw.running) {
+          sw.accumulated = swElapsed();
+          sw.running = false;
+          cancelAnimationFrame(sw.raf);
+          swStatus.textContent = "Paused at " + fmtSwPlain(swElapsed()) + ".";
+        } else {
+          sw.startStamp = Date.now();
+          sw.running = true;
+          swLoop();
+          swStatus.textContent = "Running…";
+        }
+        swRender();
+        swSyncButtons();
+      });
+      swReset.addEventListener("click", function () {
+        sw.running = false;
+        cancelAnimationFrame(sw.raf);
+        sw.accumulated = 0;
+        sw.lastLapTotal = 0;
+        sw.lapCount = 0;
+        lapList.innerHTML = "";
+        lapsEmpty.style.display = "";
+        lapsCount.textContent = "";
+        swStatus.textContent = "Ready when you are.";
+        swRender();
+        swSyncButtons();
+      });
+      swLapBtn.addEventListener("click", function () {
+        if (!sw.running) return;
+        var total = swElapsed();
+        var split = total - sw.lastLapTotal;
+        sw.lastLapTotal = total;
+        sw.lapCount += 1;
+
+        var li = document.createElement("li");
+        var num = document.createElement("span");
+        num.className = "lap-num";
+        num.textContent = "Lap " + sw.lapCount;
+        var sp = document.createElement("span");
+        sp.className = "lap-split";
+        sp.textContent = "+" + fmtSwPlain(split);
+        var tot = document.createElement("span");
+        tot.className = "lap-total";
+        tot.textContent = fmtSwPlain(total);
+        li.appendChild(num);
+        li.appendChild(sp);
+        li.appendChild(tot);
+        lapList.insertBefore(li, lapList.firstChild);
+
+        lapsEmpty.style.display = "none";
+        lapsCount.textContent = sw.lapCount + (sw.lapCount === 1 ? " lap" : " laps");
+      });
+      // Keep the display honest if the tab was throttled or hidden.
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden && sw.running) { cancelAnimationFrame(sw.raf); swLoop(); }
+      });
+      swRender();
+      swSyncButtons();
+
+      /* ================================================================
+         TIMER — countdown anchored to an end timestamp.
+         ================================================================ */
+      var tm = {
+        state: "idle",        // idle | running | paused | done
+        totalMs: 0,
+        endStamp: 0,          // Date.now() when the countdown reaches zero
+        remainingMs: 0,       // banked while paused
+        timer: 0
+      };
+      var tmBox = document.getElementById("tm-box");
+      var tmDisplay = document.getElementById("tm-display");
+      var tmStatus = document.getElementById("tm-status");
+      var tmToggle = document.getElementById("tm-toggle");
+      var tmReset = document.getElementById("tm-reset");
+      var tmProgress = document.getElementById("tm-progress");
+      var tmSetup = document.getElementById("tm-setup");
+      var inH = document.getElementById("in-h");
+      var inM = document.getElementById("in-m");
+      var inS = document.getElementById("in-s");
+      var alarmBanner = document.getElementById("alarm-banner");
+      var alarmStop = document.getElementById("alarm-stop");
+      var soundToggle = document.getElementById("sound-toggle");
+      var soundOn = true;
+
+      function readSetupMs() {
+        var h = clampInt(inH.value, 0, 99);
+        var m = clampInt(inM.value, 0, 59);
+        var s = clampInt(inS.value, 0, 59);
+        return ((h * 60 + m) * 60 + s) * 1000;
+      }
+      function clampInt(v, lo, hi) {
+        var n = parseInt(v, 10);
+        if (isNaN(n)) n = 0;
+        return Math.min(hi, Math.max(lo, n));
+      }
+      function writeSetup(ms) {
+        var totalSecs = Math.round(ms / 1000);
+        inH.value = Math.floor(totalSecs / 3600);
+        inM.value = Math.floor(totalSecs / 60) % 60;
+        inS.value = totalSecs % 60;
+      }
+      function tmRemaining() {
+        if (tm.state === "running") return tm.endStamp - Date.now();
+        if (tm.state === "paused") return tm.remainingMs;
+        if (tm.state === "done") return 0;
+        return readSetupMs();
+      }
+      function tmRender() {
+        var rem = tmRemaining();
+        tmDisplay.textContent = fmtTm(rem);
+        var pct = 0;
+        if (tm.totalMs > 0 && tm.state !== "idle") {
+          pct = Math.min(100, Math.max(0, (1 - rem / tm.totalMs) * 100));
+        }
+        tmProgress.style.width = pct + "%";
+      }
+      function tmSyncButtons() {
+        tmToggle.textContent =
+          tm.state === "running" ? "Pause" :
+          tm.state === "paused" ? "Resume" : "Start";
+        tmToggle.classList.toggle("running", tm.state === "running");
+        tmReset.disabled = tm.state === "idle";
+        tmSetup.style.display = (tm.state === "idle") ? "" : "none";
+      }
+      function tmTick() {
+        if (tm.state !== "running") return;
+        if (tm.endStamp - Date.now() <= 0) {
+          tmFinish();
+          return;
+        }
+        tmRender();
+      }
+      function tmStartInterval() {
+        clearInterval(tm.timer);
+        tm.timer = setInterval(tmTick, 100);
+      }
+      tmToggle.addEventListener("click", function () {
+        unlockAudio(); // a tap is our chance to warm up WebAudio
+        if (tm.state === "running") {
+          tm.remainingMs = Math.max(0, tm.endStamp - Date.now());
+          tm.state = "paused";
+          clearInterval(tm.timer);
+          tmStatus.textContent = "Paused with " + fmtTm(tm.remainingMs) + " left.";
+        } else {
+          var startMs = tm.state === "paused" ? tm.remainingMs : readSetupMs();
+          if (startMs <= 0) {
+            tmStatus.textContent = "Set a time first — even 10 seconds will do.";
+            return;
+          }
+          if (tm.state === "idle" || tm.state === "done") {
+            tm.totalMs = startMs;
+            stopAlarm();
+          }
+          tm.endStamp = Date.now() + startMs;
+          tm.state = "running";
+          tmStartInterval();
+          tmStatus.textContent = "Counting down…";
+        }
+        tmRender();
+        tmSyncButtons();
+      });
+      tmReset.addEventListener("click", function () {
+        clearInterval(tm.timer);
+        stopAlarm();
+        tm.state = "idle";
+        tm.totalMs = 0;
+        tm.remainingMs = 0;
+        tmStatus.textContent = "Set a time below, then tap Start.";
+        tmRender();
+        tmSyncButtons();
+      });
+      function tmFinish() {
+        clearInterval(tm.timer);
+        tm.state = "done";
+        tmRender();
+        tmSyncButtons();
+        tmStatus.textContent = "Done. Tap Stop to quiet the alarm, or Reset to set a new time.";
+        startAlarm();
+      }
+      // If the screen slept through the end, catch up the moment we're visible again.
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden && tm.state === "running") tmTick();
+      });
+
+      /* Steppers + presets (only change things while idle) */
+      document.querySelectorAll(".step-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var parts = btn.getAttribute("data-step").split(":");
+          var field = parts[0], delta = parseInt(parts[1], 10);
+          var input = field === "h" ? inH : field === "m" ? inM : inS;
+          var max = field === "h" ? 99 : 59;
+          input.value = clampInt(clampInt(input.value, 0, max) + delta, 0, max);
+          onSetupChange();
+        });
+      });
+      [inH, inM, inS].forEach(function (input) {
+        input.addEventListener("input", onSetupChange);
+        input.addEventListener("change", function () {
+          var max = input === inH ? 99 : 59;
+          input.value = clampInt(input.value, 0, max);
+          onSetupChange();
+        });
+      });
+      document.querySelectorAll(".preset").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          writeSetup(parseInt(btn.getAttribute("data-preset"), 10) * 1000);
+          onSetupChange();
+        });
+      });
+      function onSetupChange() {
+        if (tm.state === "idle" || tm.state === "done") {
+          if (tm.state === "done") { tm.state = "idle"; tm.totalMs = 0; stopAlarm(); tmSyncButtons(); }
+          tmRender();
+          var ms = readSetupMs();
+          tmStatus.textContent = ms > 0
+            ? "Ready: " + fmtTm(ms) + ". Tap Start."
+            : "Set a time below, then tap Start.";
+        }
+      }
+
+      /* ---------- Alarm: flashing display + gentle WebAudio beeps ---------- */
+      var audioCtx = null;
+      var beepTimer = 0;
+      var alarming = false;
+
+      function unlockAudio() {
+        if (!audioCtx) {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+      }
+      function beepOnce() {
+        if (!audioCtx || !soundOn) return;
+        var t = audioCtx.currentTime;
+        // Two soft sine tones, like a kitchen chime.
+        [0, 0.28].forEach(function (offset) {
+          var osc = audioCtx.createOscillator();
+          var gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = 880;
+          gain.gain.setValueAtTime(0, t + offset);
+          gain.gain.linearRampToValueAtTime(0.22, t + offset + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.24);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(t + offset);
+          osc.stop(t + offset + 0.26);
+        });
+      }
+      function startAlarm() {
+        alarming = true;
+        alarmBanner.classList.add("show");
+        tmBox.classList.add("flashing");
+        unlockAudio();
+        if (soundOn) {
+          beepOnce();
+          clearInterval(beepTimer);
+          beepTimer = setInterval(beepOnce, 1400);
+        }
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      }
+      function stopAlarm() {
+        if (!alarming) return;
+        alarming = false;
+        alarmBanner.classList.remove("show");
+        tmBox.classList.remove("flashing");
+        clearInterval(beepTimer);
+      }
+      alarmStop.addEventListener("click", function () {
+        stopAlarm();
+        tmStatus.textContent = "Alarm stopped. Reset to set a new time, or Start to run it again.";
+      });
+      soundToggle.addEventListener("click", function () {
+        soundOn = !soundOn;
+        soundToggle.setAttribute("aria-checked", soundOn ? "true" : "false");
+        if (!soundOn) {
+          clearInterval(beepTimer);
+        } else if (alarming) {
+          unlockAudio();
+          beepOnce();
+          clearInterval(beepTimer);
+          beepTimer = setInterval(beepOnce, 1400);
+        }
+      });
+
+      tmRender();
+      tmSyncButtons();
+    </script>
+  </body>
+</html>
