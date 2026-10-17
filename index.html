@@ -379,10 +379,32 @@
         .setter input { min-width: 36px; font-size: 1.45rem; }
       }
       .hidden { display: none !important; }
+
+      /* Home pill */
+      .home-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 6px;
+      }
+      .home-btn {
+        display: inline-block;
+        background: var(--surface);
+        color: var(--ink);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        box-shadow: var(--shadow);
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-decoration: none;
+        padding: 7px 14px;
+        line-height: 1.2;
+      }
+      .home-btn:active { transform: scale(0.97); }
     </style>
   </head>
   <body>
     <main class="wrap">
+      <div class="home-row"><a class="home-btn" href="https://jesuslovestyler.com/">⌂ Home</a></div>
       <p class="intro">A big, simple <strong>stopwatch</strong> and <strong>countdown timer</strong> — easy to read from across the room.</p>
 
       <div class="tabs" role="tablist" aria-label="Choose a mode">
@@ -859,5 +881,6 @@
       tmRender();
       tmSyncButtons();
     </script>
+    <script data-goatcounter="https://jesuslovestyler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
   </body>
 </html>
